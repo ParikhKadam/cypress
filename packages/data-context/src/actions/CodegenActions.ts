@@ -5,8 +5,6 @@ import type { DataContext } from '..'
 import { SpecOptions, codeGenerator } from '../codegen'
 import templates from '../codegen/templates'
 import type { CodeGenType } from '../gen/graphcache-config.gen'
-import { WizardFrontendFramework, WIZARD_FRAMEWORKS } from '@packages/scaffold-config'
-import { parse as parseReactComponent, resolver as reactDocgenResolvers } from 'react-docgen'
 import { visit } from 'ast-types'
 
 export interface ReactComponentDescriptor {
@@ -17,12 +15,29 @@ export interface ReactComponentDescriptor {
 export class CodegenActions {
   constructor (private ctx: DataContext) {}
 
-  async getReactComponentsFromFile (filePath: string): Promise<{components: ReactComponentDescriptor[], errored?: boolean }> {
+  async getReactComponentsFromFile (filePath: string, reactDocgen?: typeof import('react-docgen')): Promise<{components: ReactComponentDescriptor[], errored?: boolean }> {
     try {
+      // this dance to get react-docgen is for now because react-docgen is a module and our typescript settings are set up to transpile to commonjs
+      // which will require the module, which will fail because it's an es module. This is a temporary workaround.
+      let actualReactDocgen = reactDocgen
+
+      if (!actualReactDocgen) {
+        actualReactDocgen = await import('react-docgen')
+      }
+
+      const { parse: parseReactComponent, builtinResolvers: reactDocgenResolvers } = actualReactDocgen
+
       const src = await this.ctx.fs.readFile(filePath, 'utf8')
 
       const exportResolver: ExportResolver = new Map()
-      let result = parseReactComponent(src, findAllWithLink(exportResolver), undefined, { parserOptions: { plugins: ['typescript', 'jsx'] } })
+      let result = parseReactComponent(src, {
+        resolver: findAllWithLink(exportResolver, reactDocgenResolvers),
+        babelOptions: {
+          parserOpts: {
+            plugins: ['typescript', 'jsx'],
+          },
+        },
+      })
 
       // types appear to be incorrect in react-docgen@6.0.0-alpha.3
       // TODO: update when 6.0.0 stable is out for fixed types.
@@ -129,13 +144,13 @@ export class CodegenActions {
     return path.join(projectRoot, 'cypress', 'e2e')
   }
 
-  async scaffoldIntegration (): Promise<NexusGenObjects['ScaffoldedFile'][]> {
+  async e2eExamples (): Promise<NexusGenObjects['ScaffoldedFile'][]> {
     const projectRoot = this.ctx.currentProject
 
     assert(projectRoot, `Cannot create spec without currentProject.`)
 
     const results = await codeGenerator(
-      { templateDir: templates['scaffoldIntegration'], target: this.defaultE2EPath },
+      { templateDir: templates['e2eExamples'], target: this.defaultE2EPath },
       {},
     )
 
@@ -152,7 +167,7 @@ export class CodegenActions {
     })
   }
 
-  getWizardFrameworkFromConfig (): WizardFrontendFramework | undefined {
+  getWizardFrameworkFromConfig (): Cypress.ResolvedComponentFrameworkDefinition | undefined {
     const config = this.ctx.lifecycleManager.loadedConfigFile
 
     // If devServer is a function, they are using a custom dev server.
@@ -161,15 +176,15 @@ export class CodegenActions {
     }
 
     // @ts-ignore - because of the conditional above, we know that devServer isn't a function
-    return WIZARD_FRAMEWORKS.find((framework) => framework.configFramework === config?.component?.devServer.framework)
+    return this.ctx.coreData.wizard.frameworks.find((framework) => framework.configFramework === config?.component?.devServer.framework)
   }
 }
 
 type ExportResolver = Map<string, ReactComponentDescriptor>
 
-function findAllWithLink (exportResolver: ExportResolver) {
-  return (ast: any, parser: any, importer: any) => {
-    visit(ast, {
+function findAllWithLink (exportResolver: ExportResolver, reactDocgenResolvers: typeof import('react-docgen').builtinResolvers) {
+  return (fileState: any) => {
+    visit(fileState.ast, {
       // export const Foo, export { Foo, Bar }, export function FooBar () { ... }
       visitExportNamedDeclaration: (path) => {
         const declaration = path.node.declaration as any
@@ -229,6 +244,8 @@ function findAllWithLink (exportResolver: ExportResolver) {
       },
     })
 
-    return reactDocgenResolvers.findAllExportedComponentDefinitions(ast, parser, importer)
+    const exportedDefinitionsResolver = new reactDocgenResolvers.FindExportedDefinitionsResolver()
+
+    return exportedDefinitionsResolver.resolve(fileState)
   }
 }

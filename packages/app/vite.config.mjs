@@ -1,11 +1,33 @@
-import { makeConfig } from '../frontend-shared/vite.config.mjs'
+import { makeConfig } from '@packages/frontend-shared/vite.config.mjs'
 import Layouts from 'vite-plugin-vue-layouts'
 import Pages from 'vite-plugin-pages'
 import Copy from 'rollup-plugin-copy'
 import Legacy from '@vitejs/plugin-legacy'
 import { resolve } from 'path'
 
-export default makeConfig({}, {
+export default makeConfig({
+  optimizeDeps: {
+    include: [
+      'javascript-time-ago',
+      'ansi-to-html',
+      'fuzzysort',
+      '@cypress-design/**',
+      '@cypress-design/vue-button',
+      'debug',
+      'p-defer',
+      'bluebird',
+      'events',
+      '@popperjs/core',
+      '@opentelemetry/*',
+    ],
+    esbuildOptions: { 
+      target: "ES2022" 
+    }
+  },
+  build: {
+    target: "ES2022"
+  }
+}, {
   plugins: [
     Layouts(),
     Pages({ extensions: ['vue'] }),
@@ -16,7 +38,7 @@ export default makeConfig({}, {
       }],
     }),
     Legacy({
-      targets: ['Chrome >= 64', 'Firefox >= 86', 'Edge >= 79'],
+      targets: ['last 3 major versions'],
       modernPolyfills: true,
       renderLegacyChunks: false,
     }),

@@ -21,9 +21,9 @@ const coreStub = () => {
   }
 }
 
-const stubOmahaResult = (result) => {
-  nock('https://omahaproxy.appspot.com')
-  .get('/all.json')
+const stubChromeVersionResult = (channel, result) => {
+  nock('https://versionhistory.googleapis.com')
+  .get((uri) => uri.includes(channel))
   .reply(200, result)
 }
 
@@ -36,22 +36,28 @@ const stubRepoVersions = ({ betaVersion, stableVersion }) => {
   })
 }
 
-const stubOmahaVersions = ({ betaVersion, stableVersion }) => {
-  stubOmahaResult([
+const stubChromeVersions = ({ betaVersion, stableVersion }) => {
+  stubChromeVersionResult('stable',
     {
-      os: 'linux',
-      versions: [
+      versions: stableVersion ? [
         {
-          channel: 'stable',
+          name: `chrome/platforms/linux/channels/stable/versions/${stableVersion}`,
           version: stableVersion,
         },
+      ] : [],
+      nextPageToken: '',
+    })
+
+  stubChromeVersionResult('beta',
+    {
+      versions: betaVersion ? [
         {
-          channel: 'beta',
+          name: `chrome/platforms/linux/channels/beta/versions/${betaVersion}`,
           version: betaVersion,
         },
-      ],
-    },
-  ])
+      ] : [],
+      nextPageToken: '',
+    })
 }
 
 describe('update browser version github action', () => {
@@ -70,8 +76,7 @@ describe('update browser version github action', () => {
     })
 
     it('sets has_update: true when there is a stable update', async () => {
-      stubOmahaVersions({
-        betaVersion: '1.1',
+      stubChromeVersions({
         stableVersion: '2.0',
       })
 
@@ -83,9 +88,8 @@ describe('update browser version github action', () => {
     })
 
     it('sets has_update: true when there is a beta update', async () => {
-      stubOmahaVersions({
+      stubChromeVersions({
         betaVersion: '1.2',
-        stableVersion: '1.0',
       })
 
       const core = coreStub()
@@ -96,7 +100,7 @@ describe('update browser version github action', () => {
     })
 
     it('sets has_update: true when there is a stable update and a beta update', async () => {
-      stubOmahaVersions({
+      stubChromeVersions({
         betaVersion: '2.1',
         stableVersion: '2.0',
       })
@@ -109,10 +113,7 @@ describe('update browser version github action', () => {
     })
 
     it('sets has_update: false when there is not a stable update or a beta update', async () => {
-      stubOmahaVersions({
-        betaVersion: '1.1',
-        stableVersion: '1.0',
-      })
+      stubChromeVersions({})
 
       const core = coreStub()
 
@@ -122,7 +123,7 @@ describe('update browser version github action', () => {
     })
 
     it('sets has_update: false if there is a failure', async () => {
-      stubOmahaResult({})
+      stubChromeVersions({})
 
       const core = coreStub()
 
@@ -132,7 +133,7 @@ describe('update browser version github action', () => {
     })
 
     it('sets versions', async () => {
-      stubOmahaVersions({
+      stubChromeVersions({
         betaVersion: '2.1',
         stableVersion: '2.0',
       })
@@ -148,8 +149,7 @@ describe('update browser version github action', () => {
     })
 
     it('sets description correctly when there is a stable update', async () => {
-      stubOmahaVersions({
-        betaVersion: '1.1',
+      stubChromeVersions({
         stableVersion: '2.0',
       })
 
@@ -161,9 +161,8 @@ describe('update browser version github action', () => {
     })
 
     it('sets description correctly when there is a beta update', async () => {
-      stubOmahaVersions({
+      stubChromeVersions({
         betaVersion: '1.2',
-        stableVersion: '1.0',
       })
 
       const core = coreStub()
@@ -174,7 +173,7 @@ describe('update browser version github action', () => {
     })
 
     it('sets description correctly when there is a stable update and a beta update', async () => {
-      stubOmahaVersions({
+      stubChromeVersions({
         betaVersion: '2.1',
         stableVersion: '2.0',
       })
@@ -271,15 +270,17 @@ describe('update browser version github action', () => {
   context('.updatePRTitle', () => {
     it('updates pull request title', async () => {
       const github = {
-        pulls: {
-          list: sinon.stub().returns(Promise.resolve(
-            {
-              data: [
-                { number: '123' },
-              ],
-            },
-          )),
-          update: sinon.stub(),
+        rest: {
+          pulls: {
+            list: sinon.stub().returns(Promise.resolve(
+              {
+                data: [
+                  { number: '123' },
+                ],
+              },
+            )),
+            update: sinon.stub(),
+          },
         },
       }
 
@@ -298,14 +299,14 @@ describe('update browser version github action', () => {
         description: 'Update Chrome to newer version',
       })
 
-      expect(github.pulls.list).to.be.calledWith({
+      expect(github.rest.pulls.list).to.be.calledWith({
         owner: 'cypress-io',
         repo: 'cypress',
         base: 'develop',
         head: 'cypress-io:some-branch-name',
       })
 
-      expect(github.pulls.update).to.be.calledWith({
+      expect(github.rest.pulls.update).to.be.calledWith({
         owner: 'cypress-io',
         repo: 'cypress',
         pull_number: '123',
@@ -315,13 +316,15 @@ describe('update browser version github action', () => {
 
     it('logs and does not attempt to update pull request title if PR cannot be found', async () => {
       const github = {
-        pulls: {
-          list: sinon.stub().returns(Promise.resolve(
-            {
-              data: [],
-            },
-          )),
-          update: sinon.stub(),
+        rest: {
+          pulls: {
+            list: sinon.stub().returns(Promise.resolve(
+              {
+                data: [],
+              },
+            )),
+            update: sinon.stub(),
+          },
         },
       }
 
@@ -342,15 +345,14 @@ describe('update browser version github action', () => {
         description: 'Update Chrome to newer version',
       })
 
-      expect(github.pulls.list).to.be.calledWith({
+      expect(github.rest.pulls.list).to.be.calledWith({
         owner: 'cypress-io',
         repo: 'cypress',
         base: 'develop',
         head: 'cypress-io:some-branch-name',
       })
 
-      expect(github.pulls.update).not.to.be.called
-      // eslint-disable-next-line no-console
+      expect(github.rest.pulls.update).not.to.be.called
       expect(console.log).to.be.calledWith('Could not find PR for branch:', 'some-branch-name')
     })
   })

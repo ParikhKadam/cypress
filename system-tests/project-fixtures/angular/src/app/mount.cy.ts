@@ -23,10 +23,16 @@ import { Cart, ProductComponent } from './components/cart.component'
 import { UrlImageComponent } from './components/url-image.component'
 
 @Component({
+  standalone: false,
   template: `<app-projection>Hello World</app-projection>`,
 })
 class WrapperComponent {}
 
+// Staring with Angular v19, standalone = true is the new default behavior.
+// This means that the ng module configurations, including test module configurations,
+// do not work by default with components. Cypress for non standalone components
+// injects the CommonModule by default and allows users to add module declarations.
+// unless standalone - false is configured for the component, this no longer works in Angular v19.
 describe('angular mount', () => {
   it('pushes CommonModule into component', () => {
     cy.mount(WithDirectivesComponent)
@@ -44,7 +50,10 @@ describe('angular mount', () => {
   })
 
   it('accepts declarations', () => {
-    cy.mount(ParentComponent, { declarations: [ChildComponent] })
+    cy.mount(ParentComponent, {
+      declarations: [ChildComponent],
+    })
+
     cy.contains('h1', 'Hello World from ParentComponent')
   })
 
@@ -398,7 +407,7 @@ describe('angular mount', () => {
       cy.get('p').should('have.text', 'component provided service')
     })
 
-    it('should override component-providers via TestBed.overrideCmponent', () => {
+    it('should override component-providers via TestBed.overrideComponent', () => {
       TestBed.overrideComponent(ComponentProviderComponent, { set: { providers: [{ provide: MessageService, useValue: { message: 'overridden service' } }] } })
       cy.mount(ComponentProviderComponent)
       cy.get('p').should('have.text', 'overridden service')
@@ -441,12 +450,15 @@ describe('angular mount', () => {
   })
 
   describe('teardown', () => {
+    const cyRootSelector = '[data-cy-root]'
+
     beforeEach(() => {
-      cy.get('[id^=root]').should('not.exist')
+      cy.get(cyRootSelector).should('be.empty')
     })
 
     it('should mount', () => {
       cy.mount(ButtonOutputComponent)
+      cy.get(cyRootSelector).should('not.be.empty')
     })
 
     it('should remove previous mounted component', () => {
@@ -456,7 +468,7 @@ describe('angular mount', () => {
       cy.contains('Render 2')
 
       cy.contains('Render 1').should('not.exist')
-      cy.get('[id^=root]').children().should('have.length', 1)
+      cy.get(cyRootSelector).children().should('have.length', 1)
     })
   })
 
@@ -470,5 +482,34 @@ describe('angular mount', () => {
     class MyClass {}
 
     cy.mount(MyClass)
+  })
+})
+
+context('component-index.html', () => {
+  before(() => {
+    const cyRootSelector = '[data-cy-root]'
+    const cyRoot = document.querySelector(cyRootSelector)!
+
+    expect(cyRoot.parentElement === document.body)
+    document.body.innerHTML = `
+      <div id="container">
+        <div data-cy-root></div>
+      </div>
+    `
+  })
+
+  it('preserves html hierarchy', () => {
+    const cyRootSelector = '[data-cy-root]'
+
+    cy.mount(ChildComponent, { componentProperties: { msg: 'Render 1' } })
+    cy.contains('Render 1')
+    cy.get(cyRootSelector).should('exist').parent().should('have.id', 'container')
+    cy.get('#container').should('exist').parent().should('have.prop', 'tagName').should('eq', 'BODY')
+
+    // structure persists after teardown
+    cy.mount(ChildComponent, { componentProperties: { msg: 'Render 2' } })
+    cy.contains('Render 2')
+    cy.get(cyRootSelector).should('exist').parent().should('have.id', 'container')
+    cy.get('#container').should('exist').parent().should('have.prop', 'tagName').should('eq', 'BODY')
   })
 })

@@ -1,8 +1,9 @@
 import { defaultMessages } from '@cy/i18n'
 import { registerMountFn, addVueCommand } from './common'
 import '../../src/styles/shared.scss'
-import 'virtual:windi.css'
+import 'tailwindcss/tailwind.css'
 import 'cypress-real-events/support'
+import './browserIconCommands'
 import { installCustomPercyCommand } from './customPercyCommand'
 import { addNetworkCommands } from './onlineNetwork'
 import { GQLStubRegistry } from './mock-graphql/stubgql-Registry'
@@ -82,7 +83,7 @@ function validateWithinViewport (subject: JQuery<HTMLElement>): Cypress.Chainabl
 
 Cypress.Commands.add('validateWithinViewport', { prevSubject: true }, validateWithinViewport)
 
-Cypress.on('uncaught:exception', (err) => !err.message.includes('ResizeObserver loop limit exceeded'))
+Cypress.on('uncaught:exception', (err) => !err.message.includes('ResizeObserver loop completed with undelivered notifications.'))
 
 registerMountFn()
 addVueCommand()

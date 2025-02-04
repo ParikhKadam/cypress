@@ -21,7 +21,7 @@ export interface AutSnapshot {
   viewportWidth: number
   url: string
   body: {
-    get: () => unknown // TOOD: find out what this is, some sort of JQuery API.
+    get: () => unknown // TODO: find out what this is, some sort of JQuery API.
   }
 }
 
@@ -37,9 +37,6 @@ export class IframeModel {
     private highlightEl: ({ body }: any, opts: any) => void,
     private isAUTSameOrigin: () => boolean,
     private eventManager: EventManager,
-    private studio: {
-      selectorPlaygroundModel: any
-    },
   ) {
     this._reset()
   }

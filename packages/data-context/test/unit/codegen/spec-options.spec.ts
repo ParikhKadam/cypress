@@ -1,5 +1,5 @@
 import { defaultSpecPattern } from '@packages/config'
-import { WIZARD_FRAMEWORKS } from '@packages/scaffold-config'
+import { CT_FRAMEWORKS } from '@packages/scaffold-config'
 import { expect } from 'chai'
 import fs from 'fs-extra'
 import path from 'path'
@@ -89,7 +89,7 @@ describe('spec-options', () => {
             codeGenPath: `${tmpPath}/MyComponent.vue`,
             codeGenType: 'component',
             isDefaultSpecPattern: true,
-            framework: WIZARD_FRAMEWORKS[1],
+            framework: CT_FRAMEWORKS[1],
             specPattern: [defaultSpecPattern.component],
           })
 
@@ -108,7 +108,7 @@ describe('spec-options', () => {
             codeGenPath: `${tmpPath}/MyComponent.vue`,
             codeGenType: 'component',
             isDefaultSpecPattern: true,
-            framework: WIZARD_FRAMEWORKS[1],
+            framework: CT_FRAMEWORKS[1],
             specPattern: [defaultSpecPattern.component],
           })
 
@@ -127,7 +127,7 @@ describe('spec-options', () => {
             codeGenPath: `${tmpPath}/Counter.tsx`,
             codeGenType: 'component',
             isDefaultSpecPattern: true,
-            framework: WIZARD_FRAMEWORKS[0],
+            framework: CT_FRAMEWORKS[2],
             specPattern: [defaultSpecPattern.component],
             componentName: 'Counter',
             isDefault: true,
@@ -146,7 +146,7 @@ describe('spec-options', () => {
             codeGenPath: `${tmpPath}/Counter.tsx`,
             codeGenType: 'component',
             isDefaultSpecPattern: true,
-            framework: WIZARD_FRAMEWORKS[0],
+            framework: CT_FRAMEWORKS[2],
             specPattern: [defaultSpecPattern.component],
             componentName: 'View',
           })
@@ -166,7 +166,7 @@ describe('spec-options', () => {
             codeGenPath: `${tmpPath}/Counter.tsx`,
             codeGenType: 'component',
             isDefaultSpecPattern: true,
-            framework: WIZARD_FRAMEWORKS[0],
+            framework: CT_FRAMEWORKS[2],
             specPattern: [defaultSpecPattern.component],
             componentName: 'View',
           })
@@ -212,7 +212,7 @@ describe('spec-options', () => {
               codeGenPath: `${tmpPath}/${componentPath}`,
               codeGenType: 'component',
               isDefaultSpecPattern: false,
-              framework: WIZARD_FRAMEWORKS[1],
+              framework: CT_FRAMEWORKS[1],
               specPattern,
               specs,
             })
@@ -313,7 +313,7 @@ describe('spec-options', () => {
           { condition: 'period-separated', fileName: 'my.component.js', expectedFileName: 'my.component.cy.js', expectedComponentName: 'MyComponent' },
           { condition: 'dollar', fileName: '$MyComponent.js', expectedFileName: '$MyComponent.cy.js', expectedComponentName: '$MyComponent' },
           { condition: 'underscores', fileName: 'My_Component.js', expectedFileName: 'My_Component.cy.js', expectedComponentName: 'My_Component' },
-          { condition: 'mixed period- and hypen-delimited', fileName: 'about-us.component.js', expectedFileName: 'about-us.component.cy.js', expectedComponentName: 'AboutUsComponent' },
+          { condition: 'mixed period- and hyphen-delimited', fileName: 'about-us.component.js', expectedFileName: 'about-us.component.cy.js', expectedComponentName: 'AboutUsComponent' },
         ].forEach(({ condition, fileName, expectedFileName, expectedComponentName }) => {
           it(`generates options for ${condition}`, async () => {
             const testSpecOptions = new SpecOptions({
@@ -322,7 +322,7 @@ describe('spec-options', () => {
               codeGenType: 'component',
               isDefaultSpecPattern: true,
               specPattern: [defaultSpecPattern.component],
-              framework: WIZARD_FRAMEWORKS[1],
+              framework: CT_FRAMEWORKS[1],
             })
 
             await fs.outputFile(`${tmpPath}/${fileName}`, '// foo')

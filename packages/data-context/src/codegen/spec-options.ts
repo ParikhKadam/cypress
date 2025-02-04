@@ -1,6 +1,5 @@
 import type { ParsedPath } from 'path'
 import type { CodeGenType } from '@packages/graphql/src/gen/nxs.gen'
-import type { WizardFrontendFramework } from '@packages/scaffold-config'
 import fs from 'fs-extra'
 import { uniq, upperFirst } from 'lodash'
 import path from 'path'
@@ -14,7 +13,7 @@ interface CodeGenOptions {
   isDefaultSpecPattern: boolean
   specPattern: string[]
   currentProject: string | null
-  framework?: WizardFrontendFramework
+  framework?: Cypress.ResolvedComponentFrameworkDefinition
   specs?: FoundSpec[]
   componentName?: string
   isDefault?: boolean
@@ -32,7 +31,7 @@ export const expectedSpecExtensions = ['.cy', '.spec', '.test', '-spec', '-test'
 type ComponentExtension = `.cy.${'js' | 'ts' | 'jsx' | 'tsx'}`
 type TemplateKey = 'e2e' | 'componentEmpty' | 'vueComponent' | 'reactComponent'
 export class SpecOptions {
-  private parsedPath: ParsedPath;
+  private parsedPath: ParsedPath
 
   constructor (private options: CodeGenOptions) {
     this.parsedPath = path.parse(options.codeGenPath)
